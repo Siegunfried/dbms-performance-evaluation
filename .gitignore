@@ -1,0 +1,18 @@
+# 编译产物
+bin/
+out/
+*.class
+
+# 生成的原始数据(可由 data/generate_data.py 重新生成)
+data/movies.tsv
+data/people.tsv
+
+# 运行时更新产物
+results/people_updated.tsv
+
+# 论文原文(受版权保护,不随仓库分发)
+docs/papers/
+
+# 系统临时文件
+Thumbs.db
+.DS_Store

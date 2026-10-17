@@ -1,0 +1,16 @@
+﻿
+================================================================
+  E6b openGauss 动态数据脱敏(PostgreSQL 不具备)
+================================================================
+  跳过(已存在): ERROR: role "masked_user" already exists
+  跳过(已存在): ERROR: rl_title label already defined
+  跳过(已存在): ERROR: duplicate key value violates unique constraint "gs_masking_policy_name_index"
+[超级用户 gaussdb] 看到真实 title:
+  1 | 12 stulyev
+  2 | Al-mummia
+  3 | Ali Zaoua, prince de la rue
+[受限用户 masked_user] 同一查询看到脱敏 title:
+  1 | xxxxxxxxxx
+  2 | xxxxxxxxx
+  3 | xxxxxxxxxxxxxxxxxxxxxxxxxxx
+  => 数据库在返回结果前按策略把敏感列自动替换为 x...(PostgreSQL 无 MASKING POLICY 语法)

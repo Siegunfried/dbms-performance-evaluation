@@ -1,0 +1,74 @@
+﻿DBMS 性能评测 —— 实验开始
+数据:movies 100 万行,people 50 万行(电影数据,来自 filmdb.sql 放大)
+计时方法:预热 1 次 + 运行 5 次,报中位数 ± 标准差(热缓存)
+PostgreSQL: PostgreSQL 16.15 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit
+openGauss : (openGauss 5.0.0 build ) compiled at 2023-04-18 09:47:39 commit 0 last mr   on x86_64-unknown-linux-gnu, compiled by g++ (GCC) 7.3.0, 64-bit
+
+== E1 检索对比:文件线性扫描 vs DB(PostgreSQL / openGauss) ==
+关键词      | 文件扫描           | PostgreSQL     | openGauss      | 命中数
+--------------------------------------------------------------------------------
+love     |    178.31 |     119.08 |    156.71 | 10645
+war      |    227.56 |     113.17 |    147.82 | 7499
+the      |    231.58 |     116.74 |    155.77 | 224556
+zzzqqq   |    232.35 |     116.38 |    144.24 | 0
+
+== E2 更新对比:文件改写 vs DB(PostgreSQL / openGauss) ==
+文件改写    142.00 ms
+PostgreSQL  1778.00 ms
+openGauss   2720.00 ms
+
+== E3 索引对比:为什么 LIKE '%word%' 普通 B-tree 索引失效 ==
+[PostgreSQL]
+无索引     115.15 ms
+B-tree     116.19 ms
+B-tree 精确 0.95 ms
+GIN 三元组 9.86 ms
+
+[openGauss]
+无索引     160.11 ms
+B-tree     166.24 ms
+B-tree 精确 1.25 ms
+
+== E3b 聪明文件对照:手工倒排索引(文件侧) vs 数据库索引 ==
+构建倒排索引   1474 ms
+文件线性扫描   223.12 ms  命中 10645
+DB 全表扫描    115.00 ms  命中 10645
+DB GIN 三元组  9.53 ms  命中 10645
+手工倒排(整词) 0.20 微秒  命中 7819
+
+== E4 规模缩放:时间 vs 数据量 N(文件扫描 / DB 全表扫描 / DB GIN 索引) ==
+数据量 N     | 文件扫描           | DB 全表扫描        | DB GIN 索引     
+-------------------------------------------------------------------
+100,000   |     25.49 |      33.51 |      1.61
+250,000   |     48.32 |      77.18 |      2.87
+500,000   |     96.68 |     154.86 |      5.04
+1,000,000 |    200.93 |     314.65 |      9.48
+
+== E5 ACID / 完整性演示(文件做不到的能力) ==
+[原子性] 事务内 UPDATE 后 ROLLBACK,数据不变:
+  UPDATE 前 runtime=161 ,ROLLBACK 后 runtime=161 (未丢失)
+[完整性] 违反主键约束的 INSERT 被拒绝:
+  拒绝原因: ERROR: duplicate key value violates unique constraint "movies_pkey"
+[MVCC 快照隔离] 事务未提交的修改对其他连接不可见:
+  连接 A 已 UPDATE(runtime=999)但未提交,连接 B 读到 runtime=500 (旧值,隔离)
+  连接 A 提交后,连接 B 读到 runtime=999 (新值)
+
+== E6 PostgreSQL vs openGauss 汇总(同负载、同数据、同客户端) ==
+负载                           | PostgreSQL     | openGauss     
+-------------------------------------------------------------------
+检索 全表扫描(LIKE '%love%')       |    113.02 |    152.02
+检索 全表扫描(LIKE '%the%')        |    112.13 |    151.08
+更新(50万行 REPLACE)             |   1634.10 |   3032.85
+
+== E6b 高并发吞吐:openGauss 线程池 vs PostgreSQL 进程模型 ==
+负载:SELECT title FROM movies WHERE movieid = ?(走主键索引),每线程 5000 次;
+openGauss 已 enable_thread_pool = on;两库 max_connections = 300。
+并发数        | PostgreSQL(qps)  | openGauss(qps)  
+----------------------------------------------------------
+1          | 1392             | 1307            
+8          | 9906            | 8914            
+32         | 21880            | 20231           
+64         | 28021            | 25808           
+128        | 33768            | 31244           
+
+实验结束。

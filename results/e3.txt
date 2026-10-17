@@ -1,0 +1,42 @@
+﻿
+================================================================
+  E3 索引对比:为什么 LIKE '%word%' 普通 B-tree 索引失效
+================================================================
+[PostgreSQL]
+  无索引,LIKE '%love%' :   118.39 ms  (median, ±1.82)
+  -- 无索引 的查询计划 --
+     Finalize Aggregate  (cost=14677.59..14677.60 rows=1 width=8)
+       ->  Gather  (cost=14677.38..14677.59 rows=2 width=8)
+             Workers Planned: 2
+             ->  Partial Aggregate  (cost=13677.38..13677.39 rows=1 width=8)
+                   ->  Parallel Seq Scan on movies  (cost=0.00..13656.33 rows=8418 width=0)
+                         Filter: ((title)::text ~~* '%love%'::text)
+  B-tree 索引,LIKE '%love%' :   114.92 ms  (median, ±1.28)
+  -- B-tree 的查询计划 --
+     Finalize Aggregate  (cost=14677.59..14677.60 rows=1 width=8)
+       ->  Gather  (cost=14677.38..14677.59 rows=2 width=8)
+             Workers Planned: 2
+             ->  Partial Aggregate  (cost=13677.38..13677.39 rows=1 width=8)
+                   ->  Parallel Seq Scan on movies  (cost=0.00..13656.33 rows=8418 width=0)
+                         Filter: ((title)::text ~~* '%love%'::text)
+  B-tree 索引,精确匹配     :     1.06 ms  (median, ±0.15)
+  -- B-tree 精确匹配 的查询计划 --
+     Aggregate  (cost=8.45..8.46 rows=1 width=8)
+       ->  Index Only Scan using idx_movies_title_btree on movies  (cost=0.42..8.44 rows=1 width=0)
+             Index Cond: (title = 'Dishonored Lady [54]'::text)
+  GIN 三元组索引,LIKE '%love%' :    10.52 ms  (median, ±0.31)
+  -- GIN 三元组 的查询计划 --
+     Aggregate  (cost=8915.99..8916.00 rows=1 width=8)
+       ->  Bitmap Heap Scan on movies  (cost=164.96..8865.48 rows=20202 width=0)
+             Recheck Cond: ((title)::text ~~* '%love%'::text)
+             ->  Bitmap Index Scan on idx_movies_title_gin  (cost=0.00..159.91 rows=20202 width=0)
+                   Index Cond: ((title)::text ~~* '%love%'::text)
+
+[openGauss]
+  无索引,LIKE '%love%' :   150.57 ms  (median, ±1.22)
+  B-tree 索引,LIKE '%love%' :   149.55 ms  (median, ±0.25)
+  -- openGauss B-tree 的查询计划 --
+     Aggregate  (cost=20930.20..20930.21 rows=1 width=8)
+       ->  Seq Scan on movies  (cost=0.00..20905.00 rows=10079 width=0)
+             Filter: ((title)::text ~~* '%love%'::text)
+  B-tree 索引,精确匹配     :     1.14 ms  (median, ±0.07)

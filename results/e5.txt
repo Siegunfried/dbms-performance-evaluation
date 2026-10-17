@@ -1,0 +1,11 @@
+﻿
+================================================================
+  E5 ACID / 完整性演示(文件做不到的能力)
+================================================================
+[原子性] 事务内 UPDATE 后 ROLLBACK,数据不变:
+  UPDATE 前 runtime=161 ,ROLLBACK 后 runtime=161 (未丢失)
+[完整性] 违反主键约束的 INSERT 被拒绝:
+  拒绝原因: ERROR: duplicate key value violates unique constraint "movies_pkey"
+[MVCC 快照隔离] 事务未提交的修改对其他连接不可见:
+  连接 A 已 UPDATE(runtime=999)但未提交,连接 B 读到 runtime=500 (旧值,隔离)
+  连接 A 提交后,连接 B 读到 runtime=999 (新值)
