@@ -20,7 +20,7 @@ project1/
 ├── README.md              项目概览
 ├── report.pdf             PDF 报告
 ├── report.docx            Word 报告
-├── ConcurrencyTest.java   并发吞吐独立测试(可选)
+├── ConcurrencyTest.java   并发吞吐独立测试
 ├── src/
 │   ├── Evaluation.java    实验主程序(E1~E6b)
 │   └── Verify.java        环境验证(两库连通 + 行数)
